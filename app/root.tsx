@@ -2,13 +2,13 @@ import {
   Form,
   Links,
   LiveReload,
-  Link,
   NavLink,
   Meta,
   Outlet,
   Scripts,
   ScrollRestoration,
   useLoaderData,
+  useNavigation,
 } from "@remix-run/react";
 import { LinksFunction, json, redirect } from "@remix-run/node";
 import appStyleHref from "./app.css";
@@ -20,6 +20,7 @@ export const links: LinksFunction = () => [
 
 export const loader = async () => {
   const contacts = await getContacts();
+  // await new Promise((resolve) => setTimeout(() => resolve(''), 200));
   return json({ contacts });
 };
 
@@ -31,6 +32,7 @@ export const action = async () => {
 
 export default function App() {
   const { contacts } = useLoaderData<typeof loader>();
+  const navigation = useNavigation();
 
   return (
     <html lang="en">
@@ -88,7 +90,10 @@ export default function App() {
             )}
           </nav>
         </div>
-        <div id="detail">
+        <div
+          className={navigation.state === "loading" ? "loading" : ""}
+          id="detail"
+        >
           <Outlet />
         </div>
         <ScrollRestoration />
