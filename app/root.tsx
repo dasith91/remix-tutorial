@@ -9,19 +9,25 @@ import {
   ScrollRestoration,
   useLoaderData,
   useNavigation,
+  useSubmit,
 } from "@remix-run/react";
-import { LinksFunction, json, redirect } from "@remix-run/node";
+import { json, redirect } from "@remix-run/node";
+import type { LinksFunction, LoaderFunctionArgs } from "@remix-run/node";
+import { useEffect, useState } from "react";
 import appStyleHref from "./app.css";
+
 import { createEmptyContact, getContacts } from "./data";
 
 export const links: LinksFunction = () => [
   { rel: "stylesheet", href: appStyleHref },
 ];
 
-export const loader = async () => {
-  const contacts = await getContacts();
+export const loader = async ({ request }: LoaderFunctionArgs) => {
+  const url = new URL(request.url);
+  const q = url.searchParams.get("q");
+  const contacts = await getContacts(q);
   // await new Promise((resolve) => setTimeout(() => resolve(''), 200));
-  return json({ contacts });
+  return json({ contacts, q });
 };
 
 export const action = async () => {
@@ -31,8 +37,25 @@ export const action = async () => {
 };
 
 export default function App() {
-  const { contacts } = useLoaderData<typeof loader>();
+  const { contacts, q } = useLoaderData<typeof loader>();
   const navigation = useNavigation();
+  const submit = useSubmit();
+  // const [ query, setQuery ] = useState(q || "")
+  const searching = navigation.location && new URLSearchParams(navigation.location.search).has("q");
+  console.log(navigation.location);
+
+  useEffect(() => {
+    const searchField = document.getElementById('q');
+    if(searchField instanceof HTMLInputElement) {
+      searchField.value = q || "";
+    }
+    // console.log(q)
+  }, [q]);
+
+  // **Controlled version
+  // useEffect(() => {
+  //   setQuery(q || "")
+  // }, [q]);
 
   return (
     <html lang="en">
@@ -46,16 +69,36 @@ export default function App() {
         <div id="sidebar">
           <h1>Remix Contacts</h1>
           <div>
-            <Form id="search-form" role="search">
+            <Form 
+            id="search-form" 
+            onChange={
+              (e) => submit(e.currentTarget)
+            }
+            role="search">
               <input
                 id="q"
+                defaultValue={ q || "" }
+                className={ searching ? "loading" : "" }
                 aria-label="Search contacts"
                 placeholder="Search"
                 type="search"
                 name="q"
               />
-              <div id="search-spinner" aria-hidden hidden={true} />
+              <div id="search-spinner" aria-hidden hidden={!searching}  />
             </Form>
+            {/* **Controlled version */}
+            {/* <Form id="search-form" role="search">
+              <input
+                id="q"
+                value={ query }
+                aria-label="Search contacts"
+                placeholder="Search"
+                type="search"
+                name="q"
+                onChange={(e) => setQuery(e.currentTarget.value)}
+              />
+              <div id="search-spinner" aria-hidden hidden={true} />
+            </Form> */}
             <Form method="post">
               <button type="submit">New</button>
             </Form>
@@ -91,7 +134,7 @@ export default function App() {
           </nav>
         </div>
         <div
-          className={navigation.state === "loading" ? "loading" : ""}
+          className={navigation.state === "loading" && !searching ? "loading" : ""}
           id="detail"
         >
           <Outlet />
